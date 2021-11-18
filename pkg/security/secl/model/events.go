@@ -75,6 +75,8 @@ const (
 	SignalEventType
 	// SpliceEventType Splice event
 	SpliceEventType
+	// DNSEventType DNS event
+	DNSEventType
 	// MaxEventType is used internally to get the maximum number of kernel events.
 	MaxEventType
 
@@ -162,6 +164,8 @@ func (t EventType) String() string {
 		return "signal"
 	case SpliceEventType:
 		return "splice"
+	case DNSEventType:
+		return "dns"
 
 	case CustomLostReadEventType:
 		return "lost_events_read"
