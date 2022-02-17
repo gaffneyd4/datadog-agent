@@ -43,7 +43,7 @@ import (
 
 {{ range .Operators }}
 
-func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *State) (*{{ .FuncReturnType }}, error) {
+func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *RuleState) (*{{ .FuncReturnType }}, error) {
 	isPartialLeaf := isPartialLeaf(a, b, state)
 
 	{{ if eq .ValueType "BitmaskValueType" }}
@@ -183,7 +183,7 @@ func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *
 
 {{ range .ArrayOperators }}
 
-func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *State) (*{{ .FuncReturnType }}, error) {
+func {{ .FuncName }}(a *{{ .Arg1Type }}, b *{{ .Arg2Type }}, opts *Opts, state *RuleState) (*{{ .FuncReturnType }}, error) {
 	isPartialLeaf := isPartialLeaf(a, b, state)
 
 	arrayOp := func(a {{ .ArrayType }}, b []{{ .ArrayType }}) bool {
