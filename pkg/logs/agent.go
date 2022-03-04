@@ -43,7 +43,7 @@ type Agent struct {
 	auditor                   auditor.Auditor
 	destinationsCtx           *client.DestinationsContext
 	pipelineProvider          pipeline.Provider
-	inputs                    []restart.Restartable
+	launchers                 []restart.Restartable
 	health                    *health.Handle
 	diagnosticMessageReceiver *diagnostic.BufferedMessageReceiver
 
@@ -95,8 +95,8 @@ func NewAgent(sources *config.LogSources, services *service.Services, processing
 
 	validatePodContainerID := coreConfig.Datadog.GetBool("logs_config.validate_pod_container_id")
 
-	// setup the inputs
-	inputs := []restart.Restartable{
+	// setup the launchers
+	launchers := []restart.Restartable{
 		filelauncher.NewLauncher(sources, coreConfig.Datadog.GetInt("logs_config.open_files_limit"), pipelineProvider, auditor,
 			filelauncher.DefaultSleepDuration, validatePodContainerID, time.Duration(coreConfig.Datadog.GetFloat64("logs_config.file_scan_period")*float64(time.Second))),
 		listener.NewLauncher(sources, coreConfig.Datadog.GetInt("logs_config.frame_size"), pipelineProvider),
@@ -107,7 +107,7 @@ func NewAgent(sources *config.LogSources, services *service.Services, processing
 
 	// Only try to start the container launchers if Docker or Kubernetes is available
 	if coreConfig.IsFeaturePresent(coreConfig.Docker) || coreConfig.IsFeaturePresent(coreConfig.Kubernetes) {
-		inputs = append(inputs, container.NewLauncher(containerLaunchables))
+		launchers = append(launchers, container.NewLauncher(containerLaunchables))
 	}
 
 	return &Agent{
@@ -117,7 +117,7 @@ func NewAgent(sources *config.LogSources, services *service.Services, processing
 		auditor:                   auditor,
 		destinationsCtx:           destinationsCtx,
 		pipelineProvider:          pipelineProvider,
-		inputs:                    inputs,
+		launchers:                 launchers,
 		health:                    health,
 		diagnosticMessageReceiver: diagnosticMessageReceiver,
 	}
@@ -138,8 +138,8 @@ func NewServerless(sources *config.LogSources, services *service.Services, proce
 	// setup the pipeline provider that provides pairs of processor and sender
 	pipelineProvider := pipeline.NewServerlessProvider(config.NumberOfPipelines, auditor, processingRules, endpoints, destinationsCtx)
 
-	// setup the inputs
-	inputs := []restart.Restartable{
+	// setup the launchers
+	launchers := []restart.Restartable{
 		channel.NewLauncher(sources, pipelineProvider),
 	}
 
@@ -150,7 +150,7 @@ func NewServerless(sources *config.LogSources, services *service.Services, proce
 		auditor:                   auditor,
 		destinationsCtx:           destinationsCtx,
 		pipelineProvider:          pipelineProvider,
-		inputs:                    inputs,
+		launchers:                 launchers,
 		health:                    health,
 		diagnosticMessageReceiver: diagnosticMessageReceiver,
 	}
@@ -164,9 +164,9 @@ func (a *Agent) Start() {
 	}
 	a.started = true
 
-	inputs := restart.NewStarter()
-	for _, input := range a.inputs {
-		inputs.Add(input)
+	launchers := restart.NewStarter()
+	for _, input := range a.launchers {
+		launchers.Add(input)
 	}
 
 	starter := restart.NewStarter(
@@ -174,7 +174,7 @@ func (a *Agent) Start() {
 		a.auditor,
 		a.pipelineProvider,
 		a.diagnosticMessageReceiver,
-		inputs,
+		launchers,
 		a.schedulers,
 	)
 	starter.Start()
@@ -188,13 +188,13 @@ func (a *Agent) Flush(ctx context.Context) {
 // Stop stops all the elements of the data pipeline
 // in the right order to prevent data loss
 func (a *Agent) Stop() {
-	inputs := restart.NewParallelStopper()
-	for _, input := range a.inputs {
-		inputs.Add(input)
+	launchers := restart.NewParallelStopper()
+	for _, input := range a.launchers {
+		launchers.Add(input)
 	}
 	stopper := restart.NewSerialStopper(
 		a.schedulers,
-		inputs,
+		launchers,
 		a.pipelineProvider,
 		a.auditor,
 		a.destinationsCtx,
