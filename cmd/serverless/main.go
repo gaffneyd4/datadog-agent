@@ -19,10 +19,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/DataDog/datadog-agent/cmd/agent/common"
-	"github.com/DataDog/datadog-agent/pkg/autodiscovery"
 	"github.com/DataDog/datadog-agent/pkg/config"
-	"github.com/DataDog/datadog-agent/pkg/logs"
 	logConfig "github.com/DataDog/datadog-agent/pkg/logs/config"
 	"github.com/DataDog/datadog-agent/pkg/serializer"
 	"github.com/DataDog/datadog-agent/pkg/serverless"
@@ -292,7 +289,7 @@ func runAgent(stopCh chan struct{}) (serverlessDaemon *daemon.Daemon, err error)
 		if logRegistrationError != nil {
 			log.Error("Can't subscribe to logs:", logRegistrationError)
 		} else {
-			setupLogAgent(logChannel)
+			serverlessLogs.SetupLogAgent(logChannel)
 		}
 	}()
 
@@ -348,16 +345,4 @@ func handleSignals(serverlessDaemon *daemon.Daemon, stopCh chan struct{}) {
 			return
 		}
 	}
-}
-
-func setupLogAgent(logChannel chan *logConfig.ChannelMessage) {
-	agent, err := logs.StartServerless(
-		func() *autodiscovery.AutoConfig { return common.AC },
-	)
-	if err != nil {
-		log.Error("Could not start an instance of the Logs Agent:", err)
-		return
-	}
-
-	agent.AddScheduler(serverlessLogs.NewScheduler(logChannel, nil))
 }
