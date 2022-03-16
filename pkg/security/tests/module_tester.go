@@ -252,6 +252,7 @@ func (h *testProbeHandler) HandleCustomEvent(rule *rules.Rule, event *sprobe.Cus
 		return
 	}
 
+	fmt.Printf("HANDLE: %v\n", h.customEventHandler)
 	if h.customEventHandler != nil && h.customEventHandler.callback != nil {
 		h.customEventHandler.callback(rule, event)
 	}
@@ -540,6 +541,7 @@ func newTestModule(t testing.TB, macroDefs []*rules.MacroDefinition, ruleDefs []
 		return nil, errors.Wrap(err, "failed to init module")
 	}
 
+	fmt.Printf("SetEventHandler: %v\n", testMod.probeHandler)
 	testMod.probe.SetEventHandler(testMod.probeHandler)
 
 	if err := testMod.module.Start(); err != nil {
@@ -800,6 +802,7 @@ func (tm *testModule) GetProbeCustomEvent(tb testing.TB, action func() error, cb
 				return
 			}
 		}
+		fmt.Printf("Reload event: %+v\n", event)
 
 		select {
 		case <-ctx.Done():
@@ -823,6 +826,7 @@ func (tm *testModule) GetProbeCustomEvent(tb testing.TB, action func() error, cb
 		message <- Skip
 		return err
 	}
+	fmt.Printf("Action done\n")
 	message <- Continue
 
 	select {
