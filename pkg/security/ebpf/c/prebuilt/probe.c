@@ -50,6 +50,7 @@
 #include "raw_syscalls.h"
 #include "module.h"
 #include "signal.h"
+#include "offset.h"
 
 struct invalidate_dentry_event_t {
     struct kevent_t event;

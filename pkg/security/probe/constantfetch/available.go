@@ -11,17 +11,20 @@ import (
 
 // GetAvailableConstantFetchers returns available constant fetchers
 func GetAvailableConstantFetchers(config *config.Config, kv *kernel.Version, statsdClient *statsd.Client) []ConstantFetcher {
+	OffsetGuesserFetcher := NewOffsetGuesserFetcher(config)
 	fallbackConstantFetcher := NewFallbackConstantFetcher(kv)
 
 	if config.EnableRuntimeCompiledConstants {
 		rcConstantFetcher := NewRuntimeCompilationConstantFetcher(&config.Config, statsdClient)
 		return []ConstantFetcher{
 			rcConstantFetcher,
+			OffsetGuesserFetcher,
 			fallbackConstantFetcher,
 		}
 	}
 
 	return []ConstantFetcher{
+		OffsetGuesserFetcher,
 		fallbackConstantFetcher,
 	}
 }

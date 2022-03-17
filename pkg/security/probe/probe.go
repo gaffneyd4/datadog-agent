@@ -23,7 +23,6 @@ import (
 	lib "github.com/cilium/ebpf"
 	"github.com/pkg/errors"
 
-	"github.com/DataDog/datadog-agent/pkg/ebpf/bytecode"
 	pconfig "github.com/DataDog/datadog-agent/pkg/process/config"
 	"github.com/DataDog/datadog-agent/pkg/security/config"
 	"github.com/DataDog/datadog-agent/pkg/security/ebpf"
@@ -121,43 +120,30 @@ func (p *Probe) VerifyOSVersion() error {
 	return nil
 }
 
+func isSyscallWrapperRequired() (bool, error) {
+	openSyscall, err := manager.GetSyscallFnName("open")
+	if err != nil {
+		return false, err
+	}
+
+	return !strings.HasPrefix(openSyscall, "SyS_") && !strings.HasPrefix(openSyscall, "sys_"), nil
+}
+
 // Init initializes the probe
 func (p *Probe) Init(client *statsd.Client) error {
 	p.startTime = time.Now()
 
-	var err error
-	var bytecodeReader bytecode.AssetReader
-
-	useSyscallWrapper := false
-	openSyscall, err := manager.GetSyscallFnName("open")
+	useSyscallWrapper, err := isSyscallWrapperRequired()
 	if err != nil {
 		return err
 	}
-	if !strings.HasPrefix(openSyscall, "SyS_") && !strings.HasPrefix(openSyscall, "sys_") {
-		useSyscallWrapper = true
-	}
 
-	if p.config.EnableRuntimeCompiler {
-		bytecodeReader, err = getRuntimeCompiledProbe(p.config, useSyscallWrapper)
-		if err != nil {
-			log.Warnf("error compiling runtime-security probe, falling back to pre-compiled: %s", err)
-		} else {
-			defer bytecodeReader.Close()
-		}
-	}
+	loader := ebpf.NewLoader(p.config, useSyscallWrapper)
+	defer loader.Close()
 
-	// fallback to pre-compiled version
-	if bytecodeReader == nil {
-		asset := "runtime-security"
-		if useSyscallWrapper {
-			asset += "-syscall-wrapper"
-		}
-
-		bytecodeReader, err = bytecode.GetReader(p.config.BPFDir, asset+".o")
-		if err != nil {
-			return err
-		}
-		defer bytecodeReader.Close()
+	bytecodeReader, err := loader.Load()
+	if err != nil {
+		return err
 	}
 
 	var ok bool
@@ -964,7 +950,12 @@ func NewProbe(config *config.Config, client *statsd.Client) (*Probe, error) {
 			Name:  "check_helper_call_input",
 			Value: getCheckHelperCallInputType(p),
 		},
+		manager.ConstantEditor{
+			Name:  "pid_expected",
+			Value: uint64(os.Getpid()),
+		},
 	)
+
 	p.managerOptions.ConstantEditors = append(p.managerOptions.ConstantEditors, DiscarderConstants...)
 	p.managerOptions.ConstantEditors = append(p.managerOptions.ConstantEditors, getCGroupWriteConstants())
 
