@@ -301,6 +301,10 @@ func (t *Tracer) Stop() {
 	t.conntracker.Close()
 }
 
+func (t *Tracer) RegisterClient(clientID string) {
+	t.state.RegisterClient(clientID)
+}
+
 func (t *Tracer) GetActiveConnections(clientID string) (*network.Connections, error) {
 	t.bufferLock.Lock()
 	defer t.bufferLock.Unlock()

@@ -46,6 +46,10 @@ type State interface {
 		http map[http.Key]http.RequestStats,
 	) Delta
 
+	// RegisterClient starts tracking stateful data for the given client
+	// If the client is already registered, it does nothing.
+	RegisterClient(clientID string)
+
 	// RemoveClient stops tracking stateful data for a given client
 	RemoveClient(clientID string)
 
@@ -172,6 +176,10 @@ func (ns *networkState) getClients() []string {
 	return clients
 }
 
+func (ns *networkState) RegisterClient(id string) {
+	_, _ = ns.getClient(id)
+}
+
 // GetDelta returns the connections for the given client
 // If the client is not registered yet, we register it and return the connections we have in the global state
 // Otherwise we return both the connections with last stats and the closed connections for this client
@@ -190,28 +198,11 @@ func (ns *networkState) GetDelta(
 	connsByKey := getConnsByKey(active, ns.buf)
 
 	clientBuffer := clientPool.Get(id)
-	client, ok := ns.getClient(id)
+	client, _ := ns.getClient(id)
 	defer client.Reset(connsByKey)
 
-	if !ok {
-		for key, c := range connsByKey {
-			ns.createStatsForKey(client, key)
-			ns.updateConnWithStats(client, key, c)
-
-			// We force last stats to be 0 on a new client this is purely to
-			// have a coherent definition of LastXYZ and should not have an impact
-			// on collection since we drop the first get in the process-agent
-			c.LastSentBytes = 0
-			c.LastRecvBytes = 0
-			c.LastRetransmits = 0
-			c.LastTCPEstablished = 0
-			c.LastTCPClosed = 0
-		}
-		clientBuffer.Append(active)
-	} else {
-		// Update all connections with relevant up-to-date stats for client
-		ns.mergeConnections(id, connsByKey, clientBuffer)
-	}
+	// Update all connections with relevant up-to-date stats for client
+	ns.mergeConnections(id, connsByKey, clientBuffer)
 
 	conns := clientBuffer.Connections()
 	ns.determineConnectionIntraHost(conns)
@@ -367,11 +358,12 @@ func (ns *networkState) getClient(clientID string) (*client, bool) {
 	}
 
 	c := &client{
-		lastFetch:         time.Now(),
-		stats:             map[string]*stats{},
-		closedConnections: make([]ConnectionStats, 0, minClosedCapacity),
-		dnsStats:          dns.StatsByKeyByNameByType{},
-		httpStatsDelta:    map[http.Key]http.RequestStats{},
+		lastFetch:             time.Now(),
+		stats:                 map[string]*stats{},
+		closedConnections:     make([]ConnectionStats, 0, minClosedCapacity),
+		closedConnectionsKeys: make(map[string]int),
+		dnsStats:              dns.StatsByKeyByNameByType{},
+		httpStatsDelta:        map[http.Key]http.RequestStats{},
 	}
 	ns.clients[clientID] = c
 	return c, false

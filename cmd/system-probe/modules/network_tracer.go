@@ -91,6 +91,12 @@ func (nt *networkTracer) Register(httpMux *module.Router) error {
 		logRequests(id, count, len(cs.Conns), start)
 	}))
 
+	httpMux.HandleFunc("/register", utils.WithConcurrencyLimit(utils.DefaultMaxConcurrentRequests, func(w http.ResponseWriter, req *http.Request) {
+		id := getClientID(req)
+		nt.tracer.RegisterClient(id)
+		w.WriteHeader(http.StatusOK)
+	}))
+
 	httpMux.HandleFunc("/debug/net_maps", func(w http.ResponseWriter, req *http.Request) {
 		cs, err := nt.tracer.DebugNetworkMaps()
 		if err != nil {

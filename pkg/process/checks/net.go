@@ -68,7 +68,8 @@ func (c *ConnectionsCheck) Init(cfg *config.AgentConfig, _ *model.SystemInfo) {
 	c.networkID = networkID
 
 	// Run the check one time on init to register the client on the system probe
-	_, _ = c.Run(cfg, 0)
+	tu, _ := net.GetRemoteSystemProbeUtil()
+	tu.Register(c.tracerClientID)
 }
 
 // Name returns the name of the ConnectionsCheck.
