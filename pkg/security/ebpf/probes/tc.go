@@ -42,6 +42,19 @@ func GetTCProbes() []*manager.Probe {
 	return tcProbes
 }
 
+// GetAllTCProgramFunctions returns the list of TC classifier sections
+func GetAllTCProgramFunctions() []string {
+	output := []string{
+		"classifier_dns_request",
+		"classifier_dns_request_parser",
+	}
+
+	for _, tcProbe := range GetTCProbes() {
+		output = append(output, tcProbe.EBPFFuncName)
+	}
+	return output
+}
+
 func getTCTailCallRoutes() []manager.TailCallRoute {
 	return []manager.TailCallRoute{
 		{
