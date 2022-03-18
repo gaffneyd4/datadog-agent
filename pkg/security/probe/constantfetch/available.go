@@ -14,7 +14,7 @@ func GetAvailableConstantFetchers(config *config.Config, kv *kernel.Version, sta
 	OffsetGuesserFetcher := NewOffsetGuesserFetcher(config)
 	fallbackConstantFetcher := NewFallbackConstantFetcher(kv)
 
-	if config.EnableRuntimeCompiledConstants {
+	if config.RuntimeCompiledConstantsEnabled {
 		rcConstantFetcher := NewRuntimeCompilationConstantFetcher(&config.Config, statsdClient)
 		return []ConstantFetcher{
 			rcConstantFetcher,

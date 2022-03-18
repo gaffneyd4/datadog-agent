@@ -90,10 +90,6 @@ type Config struct {
 	SelfTestEnabled bool
 	// EnableRemoteConfig defines if configuration should be fetched from the backend
 	EnableRemoteConfig bool
-	// EnableRuntimeCompiledConstants defines if the runtime compilation based constant fetcher is enabled
-	EnableRuntimeCompiledConstants bool
-	// RuntimeCompiledConstantsIsSet is set if the runtime compiled constants option is user-set
-	RuntimeCompiledConstantsIsSet bool
 	// ActivityDumpEnabled defines if the activity dump manager should be enabled
 	ActivityDumpEnabled bool
 	// ActivityDumpCleanupPeriod defines the period at which the activity dump manager should perform its cleanup
@@ -101,6 +97,12 @@ type Config struct {
 	ActivityDumpCleanupPeriod time.Duration
 	// RuntimeMonitor defines if the runtime monitor should be enabled
 	RuntimeMonitor bool
+	// RuntimeCompilationEnabled defines if the runtime-compilation is enabled
+	RuntimeCompilationEnabled bool
+	// EnableRuntimeCompiledConstants defines if the runtime compilation based constant fetcher is enabled
+	RuntimeCompiledConstantsEnabled bool
+	// RuntimeCompiledConstantsIsSet is set if the runtime compiled constants option is user-set
+	RuntimeCompiledConstantsIsSet bool
 }
 
 // IsEnabled returns true if any feature is enabled. Has to be applied in config package too
@@ -152,11 +154,13 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		LogPatterns:                        aconfig.Datadog.GetStringSlice("runtime_security_config.log_patterns"),
 		SelfTestEnabled:                    aconfig.Datadog.GetBool("runtime_security_config.self_test.enabled"),
 		EnableRemoteConfig:                 aconfig.Datadog.GetBool("runtime_security_config.enable_remote_configuration"),
-		EnableRuntimeCompiledConstants:     aconfig.Datadog.GetBool("runtime_security_config.enable_runtime_compiled_constants"),
-		RuntimeCompiledConstantsIsSet:      aconfig.Datadog.IsSet("runtime_security_config.enable_runtime_compiled_constants"),
 		ActivityDumpEnabled:                aconfig.Datadog.GetBool("runtime_security_config.activity_dump_manager.enabled"),
 		ActivityDumpCleanupPeriod:          time.Duration(aconfig.Datadog.GetInt("runtime_security_config.activity_dump_manager.cleanup_period")) * time.Second,
 		RuntimeMonitor:                     aconfig.Datadog.GetBool("runtime_security_config.runtime_monitor.enabled"),
+		// runtime compilation
+		RuntimeCompilationEnabled:       aconfig.Datadog.GetBool("runtime_security_config.runtime_compilation.enabled"),
+		RuntimeCompiledConstantsEnabled: aconfig.Datadog.GetBool("runtime_security_config.runtime_compilation.compiled_constants_enabled"),
+		RuntimeCompiledConstantsIsSet:   aconfig.Datadog.IsSet("runtime_security_config.runtime_compilation.compiled_constants_enabled"),
 	}
 
 	// if runtime is enabled then we force fim
@@ -184,8 +188,8 @@ func NewConfig(cfg *config.Config) (*Config, error) {
 		c.MapDentryResolutionEnabled = true
 	}
 
-	if !c.Config.EnableRuntimeCompiler {
-		c.EnableRuntimeCompiledConstants = false
+	if !c.RuntimeCompilationEnabled {
+		c.RuntimeCompiledConstantsEnabled = false
 	}
 
 	serviceName := utils.GetTagValue("service", aconfig.GetConfiguredTags(true))
